@@ -13,7 +13,6 @@ class authcontroller
 
     public function login(): void
     {
-        // 🔒 Si ya está logueado → ir al dashboard
         if (!empty($_SESSION['usuario'])) {
             header('Location: ' . BASE . '/index.php/dashboard');
             exit;
@@ -32,20 +31,15 @@ class authcontroller
 
                 $usuario = $this->modelo->buscarPorUsername($username);
 
-                // 🔥 VALIDACIÓN LOGIN
                 if ($usuario && password_verify($password, $usuario['password_hash'])) {
 
                     $_SESSION['usuario'] = [
                         'id'       => $usuario['id'],
                         'username' => $usuario['username'],
-                        'nombre'   => $usuario['nombre'] . ' ' . $usuario['apellido'],
-                        'rol'      => $usuario['rol'],
-                        'sucursal' => $usuario['sucursal'],
+                        'nombre'   => $usuario['nombre'],
+                        'rol'      => $usuario['rol']
                     ];
 
-                    $this->modelo->actualizarUltimoLogin($usuario['id']);
-
-                    // 🔥 REDIRECCIÓN CORRECTA
                     header('Location: ' . BASE . '/index.php/dashboard');
                     exit;
 
@@ -60,10 +54,7 @@ class authcontroller
 
     public function logout(): void
     {
-        $_SESSION = [];
         session_destroy();
-
-        // 🔥 REDIRECCIÓN CORRECTA
         header('Location: ' . BASE . '/index.php/login');
         exit;
     }
