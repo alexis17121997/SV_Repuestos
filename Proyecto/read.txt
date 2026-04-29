@@ -1,0 +1,215 @@
+/repuestos/
+│
+├── index.php
+├── .env
+│
+└── app/
+    ├── config/
+    │   └── database.php
+    ├── controllers/
+    │   ├── dashboardcontroller.php
+    │   ├── productoscontroller.php
+    │   ├── personalcontroller.php
+    │   ├── sucursalescontroller.php
+    │   ├── inventariocontroller.php
+    │   ├── calendariocontroller.php
+    │   └── reportescontroller.php
+    ├── models/
+    │   ├── productomodel.php
+    │   ├── personalmodel.php
+    │   ├── sucursalmodel.php
+    │   ├── inventariomodel.php
+    │   └── calendariomodel.php
+    └── views/
+        ├── layout/
+        │   ├── header.php
+        │   ├── sidebar.php
+        │   └── footer.php
+        ├── dashboard/
+        │   └── index.php
+        ├── productos/
+        ├── personal/
+        ├── sucursales/
+        ├── inventario/
+        ├── calendario/
+        └── reportes/
+
+
+************************************************************************************************
+-- ============================================
+-- TABLA: sucursales
+-- ============================================
+CREATE TABLE sucursales (
+    id          SERIAL PRIMARY KEY,
+    nombre      VARCHAR(100) NOT NULL,
+    direccion   TEXT,
+    telefono    VARCHAR(20),
+    ciudad      VARCHAR(80),
+    activa      BOOLEAN DEFAULT TRUE,
+    creado_en   TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
+-- TABLA: roles
+-- ============================================
+CREATE TABLE roles (
+    id          SERIAL PRIMARY KEY,
+    nombre      VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT
+);
+
+-- ============================================
+-- TABLA: personal
+-- ============================================
+CREATE TABLE personal (
+    id          SERIAL PRIMARY KEY,
+    nombre      VARCHAR(100) NOT NULL,
+    apellido    VARCHAR(100) NOT NULL,
+    ci          VARCHAR(20) UNIQUE,
+    email       VARCHAR(150) UNIQUE,
+    telefono    VARCHAR(20),
+    direccion   TEXT,
+    sucursal_id INT REFERENCES sucursales(id) ON DELETE SET NULL,
+    rol_id      INT REFERENCES roles(id) ON DELETE SET NULL,
+    fecha_ingreso DATE DEFAULT CURRENT_DATE,
+    activo      BOOLEAN DEFAULT TRUE,
+    creado_en   TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
+-- TABLA: usuarios (login del sistema)
+-- ============================================
+CREATE TABLE usuarios (
+    id            SERIAL PRIMARY KEY,
+    personal_id   INT UNIQUE REFERENCES personal(id) ON DELETE CASCADE,
+    username      VARCHAR(60) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    activo        BOOLEAN DEFAULT TRUE,
+    ultimo_login  TIMESTAMP,
+    creado_en     TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
+-- TABLA: categorias
+-- ============================================
+CREATE TABLE categorias (
+    id          SERIAL PRIMARY KEY,
+    nombre      VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT,
+    activa      BOOLEAN DEFAULT TRUE
+);
+
+-- ============================================
+-- TABLA: marcas
+-- ============================================
+CREATE TABLE marcas (
+    id          SERIAL PRIMARY KEY,
+    nombre      VARCHAR(100) NOT NULL UNIQUE,
+    pais_origen VARCHAR(80),
+    activa      BOOLEAN DEFAULT TRUE
+);
+
+-- ============================================
+-- TABLA: productos
+-- ============================================
+CREATE TABLE productos (
+    id            SERIAL PRIMARY KEY,
+    codigo        VARCHAR(50) NOT NULL UNIQUE,
+    nombre        VARCHAR(150) NOT NULL,
+    descripcion   TEXT,
+    categoria_id  INT REFERENCES categorias(id) ON DELETE SET NULL,
+    marca_id      INT REFERENCES marcas(id) ON DELETE SET NULL,
+    precio_compra NUMERIC(10,2) NOT NULL DEFAULT 0,
+    precio_venta  NUMERIC(10,2) NOT NULL DEFAULT 0,
+    unidad_medida VARCHAR(20) DEFAULT 'unidad',
+    imagen_url    TEXT,
+    activo        BOOLEAN DEFAULT TRUE,
+    creado_en     TIMESTAMP DEFAULT NOW(),
+    actualizado_en TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
+-- TABLA: inventario (stock por sucursal)
+-- ============================================
+CREATE TABLE inventario (
+    id            SERIAL PRIMARY KEY,
+    producto_id   INT NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+    sucursal_id   INT NOT NULL REFERENCES sucursales(id) ON DELETE CASCADE,
+    stock_actual  INT NOT NULL DEFAULT 0,
+    stock_minimo  INT NOT NULL DEFAULT 5,
+    ubicacion     VARCHAR(50),
+    UNIQUE (producto_id, sucursal_id)
+);
+
+-- ============================================
+-- TABLA: movimientos_inventario
+-- ============================================
+CREATE TABLE movimientos_inventario (
+    id            SERIAL PRIMARY KEY,
+    producto_id   INT NOT NULL REFERENCES productos(id),
+    sucursal_id   INT NOT NULL REFERENCES sucursales(id),
+    tipo          VARCHAR(20) NOT NULL CHECK (tipo IN ('entrada','salida','ajuste','transferencia')),
+    cantidad      INT NOT NULL,
+    stock_anterior INT NOT NULL,
+    stock_nuevo    INT NOT NULL,
+    personal_id   INT REFERENCES personal(id) ON DELETE SET NULL,
+    observacion   TEXT,
+    fecha         TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
+-- TABLA: calendario_eventos
+-- ============================================
+CREATE TABLE calendario_eventos (
+    id           SERIAL PRIMARY KEY,
+    titulo       VARCHAR(150) NOT NULL,
+    descripcion  TEXT,
+    fecha_inicio TIMESTAMP NOT NULL,
+    fecha_fin    TIMESTAMP,
+    tipo         VARCHAR(30) DEFAULT 'general'
+                 CHECK (tipo IN ('general','pedido','mantenimiento','reunion','recordatorio')),
+    personal_id  INT REFERENCES personal(id) ON DELETE SET NULL,
+    sucursal_id  INT REFERENCES sucursales(id) ON DELETE SET NULL,
+    color        VARCHAR(7) DEFAULT '#378ADD',
+    creado_en    TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================
+-- DATOS INICIALES
+-- ============================================
+
+INSERT INTO sucursales (nombre, direccion, telefono, ciudad) VALUES
+    ('Sede Central', 'Av. Principal 123', '591-12345678', 'La Paz');
+
+INSERT INTO roles (nombre, descripcion) VALUES
+    ('administrador', 'Acceso total al sistema'),
+    ('vendedor',      'Gestión de ventas y consultas'),
+    ('almacenero',    'Control de inventario y stock');
+
+INSERT INTO categorias (nombre, descripcion) VALUES
+    ('Motor',           'Repuestos del motor'),
+    ('Frenos',          'Sistema de frenos'),
+    ('Suspensión',      'Sistema de suspensión'),
+    ('Eléctrico',       'Sistema eléctrico'),
+    ('Transmisión',     'Caja de cambios y transmisión'),
+    ('Carrocería',      'Piezas de carrocería'),
+    ('Filtros',         'Filtros de aire, aceite, combustible'),
+    ('Lubricantes',     'Aceites y lubricantes');
+
+INSERT INTO marcas (nombre, pais_origen) VALUES
+    ('Toyota',      'Japón'),
+    ('Bosch',       'Alemania'),
+    ('NGK',         'Japón'),
+    ('Gates',       'USA'),
+    ('Moog',        'USA'),
+    ('Valeo',       'Francia'),
+    ('SKF',         'Suecia'),
+    ('Mahle',       'Alemania');
+
+-- Usuario administrador (password: Admin1234)
+-- El hash abajo es bcrypt de 'Admin1234'
+INSERT INTO personal (nombre, apellido, ci, email, sucursal_id, rol_id) VALUES
+    ('Admin', 'Sistema', '00000000', 'admin@repuestos.com', 1, 1);
+
+INSERT INTO usuarios (personal_id, username, password_hash) VALUES
+    (1, 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi');
