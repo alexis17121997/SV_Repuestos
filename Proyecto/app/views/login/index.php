@@ -108,7 +108,7 @@
     <?= htmlspecialchars($error ?? '') ?>
   </div>
 
-  <form method="POST" action="<?= BASE ?>/login">
+  <form method="POST" action="<?= BASE ?>/index.php/login">
     <div class="form-group">
       <label for="username">Usuario</label>
       <input
